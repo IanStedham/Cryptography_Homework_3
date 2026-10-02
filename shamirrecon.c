@@ -17,6 +17,7 @@ int64_t euclid_gcd(int64_t a, int64_t b);
 int64_t mul_mod(int64_t a, int64_t b, int64_t m);
 int64_t square_multiply(int64_t base, int64_t exponent, int64_t modulo);
 int64_t extended_euclid(int64_t number, int64_t modulo);
+int64_t mod_ensure_positive_result(int64_t num, int64_t mod);
 
 int main(int argc, char *argv[]) { 
     int modulos_length;
@@ -54,6 +55,7 @@ int main(int argc, char *argv[]) {
     since evaluating at 0, numerator and denominator can be calculated immediately. Will reevaluate after meeting with TA
     this can be reformatted into a for loop easily once I know which shares should be used 
     reconalt not working on my laptop, will also ask TA about this, theres a note that this might happen
+    use different shares
     */
 
     // larange bias for share 1 evaluated at 0
@@ -87,14 +89,17 @@ int main(int argc, char *argv[]) {
     printf("larange_bias_3: %ld\n", larange_bias_3);
 
     uint64_t larange_bias_mul_share_y_1 = mul_mod(share1_y, larange_bias_1, modulos);
-    uint64_t larange_bias_mul_share_y_2 = mul_mod(share2_y, larange_bias_2, modulos);
+    uint64_t larange_bias_mul_share_y_2 = mul_mod(share2_y, (larange_bias_2*-1), modulos);
     uint64_t larange_bias_mul_share_y_3 = mul_mod(share3_y, larange_bias_3, modulos);
     printf("\nlarange_bias_mul_share_y_1: %ld\n", larange_bias_mul_share_y_1);
     printf("larange_bias_mul_share_y_2: %ld\n", larange_bias_mul_share_y_2);
     printf("larange_bias_mul_share_y_3: %ld\n", larange_bias_mul_share_y_3);
 
-    uint64_t secret_reconstructed = larange_bias_mul_share_y_1 + larange_bias_mul_share_y_2 + larange_bias_mul_share_y_3;
-    secret_reconstructed = secret_reconstructed % modulos;
+    uint64_t secret_reconstructed = mod_ensure_positive_result(larange_bias_mul_share_y_1 + larange_bias_mul_share_y_2 + larange_bias_mul_share_y_3, modulos);
+    //secret_reconstructed = secret_reconstructed % modulos;
+    if (secret_reconstructed < 0) {
+        secret_reconstructed = secret_reconstructed + modulos;
+    }
     printf("\nsecret_reconstructed: %ld\n", secret_reconstructed);
 
     char secret_reconstructed_string[LENGTH_OF_EACH_MESSAGE];
@@ -238,6 +243,16 @@ int64_t euclid_gcd(int64_t a, int64_t b) {
 //helper: multiplication/mod reduction
 int64_t mul_mod(int64_t a, int64_t b, int64_t m) {
     return (a * b) % m;
+}
+
+int64_t mod_ensure_positive_result(int64_t num, int64_t mod) {
+    int64_t result = num % mod;
+    if (result < 0) {
+        return result + mod;
+    }
+    else {
+        return result;
+    }
 }
 
 // S & M - 
