@@ -7,6 +7,8 @@
 #include <openssl/evp.h> 
 
 #define LENGTH_OF_EACH_MESSAGE 64
+#define N_SHARES 5
+#define THRESHOLD 3
 
 unsigned char* Read_File (char fileName[], int *fileLen);
 void Write_Multiple_Lines_to_File(char fileName[], char input[][LENGTH_OF_EACH_MESSAGE], int num);
@@ -26,25 +28,28 @@ int main(int argc, char *argv[]) {
     unsigned char* modulos_string = Read_File(argv[2], &modulos_length);
     uint64_t modulos = str_to_uint64(modulos_string, modulos_length);
 
-    uint64_t y_shares[4];
-    int coefficients[5];
+    uint64_t y_shares[N_SHARES];
+    int coefficients[THRESHOLD];
     coefficients[0] = secret;
-    for (int x = 1; x < 5; x++) {
+    for (int x = 1; x < THRESHOLD; x++) {
         int current_coefficient = rand(); 
         coefficients[x] = current_coefficient;
+        printf("coefficient %d: %d\n", x, current_coefficient);
     }
 
-    for (int x = 1; x < 5; x++) {
+    printf("\n");
+    for (int x = 0; x < N_SHARES; x++) {
         uint64_t current_y_share = secret;
-        for (int i = 1; i < 5; i++) {
-            uint64_t exponent_result = square_multiply(x, i, modulos);
+        for (int i = 1; i < THRESHOLD; i++) {
+            uint64_t exponent_result = square_multiply((x+1), i, modulos);
             uint64_t mul_mod_result = mul_mod(coefficients[i], exponent_result, modulos);
             current_y_share += mul_mod_result;
         }
-        y_shares[x] = current_y_share;
+        y_shares[x] = current_y_share % modulos;
+        printf("x share: %d, y_share: %ld\n", (x+1), y_shares[x]);
     }
 
-    for (int x = 0; x < 5; x++) {
+    for (int x = 0; x < N_SHARES; x++) {
         char y_share_string[LENGTH_OF_EACH_MESSAGE];
         uint64_to_str(y_shares[x], y_share_string, LENGTH_OF_EACH_MESSAGE);
         char x_share_string[LENGTH_OF_EACH_MESSAGE];
@@ -54,7 +59,7 @@ int main(int argc, char *argv[]) {
         strncpy(lines[0], x_share_string, LENGTH_OF_EACH_MESSAGE - 1);
         strncpy(lines[1], y_share_string, LENGTH_OF_EACH_MESSAGE - 1);
 
-        char file_name[10];
+        char file_name[11];
         snprintf(file_name, sizeof(file_name), "Share%d.txt", (x+1));
 
         Write_Multiple_Lines_to_File(file_name, lines, 2);
